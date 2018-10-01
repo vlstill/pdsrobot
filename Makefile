@@ -19,7 +19,7 @@ run : build
 clean :
 	platformio run --target clean
 
-monitor : run
+monitor :
 	platformio run --target monitor
 
 .PHONY: all build run clean

@@ -53,6 +53,36 @@ struct Servo
     ::Servo _s;
 };
 
+template< uint8_t trigPin, uint8_t echoPin >
+struct Ultrasonic {
+    Ultrasonic() {
+        pinMode( trigPin, OUTPUT );
+        pinMode( echoPin, INPUT );
+    }
+
+    // in millimeters
+    unsigned long distance() {
+        // (high level time * sound velocity = 340m/s) / 2
+        digitalWrite( trigPin, HIGH );
+        delay( 1 );
+        digitalWrite( trigPin, LOW );
+        // pulse is in microseconds
+        constexpr unsigned long max = 4000;
+        auto dist = pulseToMM( pulseIn( echoPin, HIGH, mmToPulse( max ) ) );
+        return dist == 0 ? -1 : dist;
+    }
+
+    static constexpr unsigned long pulseToMM( unsigned long pulse ) {
+        return (pulse * 340) / 2 / 1000;
+    }
+
+    static constexpr unsigned long mmToPulse( unsigned long mm ) {
+        return (mm * 1000 * 2) / 340;
+    }
+
+    static constexpr unsigned long err = -1;
+};
+
 }
 
 void setup() {
@@ -61,6 +91,8 @@ void setup() {
 
     pds::Motor< 2, 3 > mleft;
     pds::Motor< 4, 5 > mrigh;
+
+    pds::Ultrasonic< 12, 13 > ultrasonic;
 
     for ( uint8_t i = 2; i < 6; ++i )
         pinMode( i, OUTPUT );
@@ -101,10 +133,38 @@ void setup() {
             case 'z':
             case 'Z':
                 servo.set( 0 );
+                break;
             case 'x':
             case 'X':
                 mleft.stop();
                 mrigh.stop();
+                break;
+            case 'm':
+            case 'M':
+                {
+                auto dist = ultrasonic.distance();
+                if ( dist == ultrasonic.err )
+                    Serial.println( "(error)" );
+                else
+                    Serial.println( dist );
+                break;
+                }
+            case 'g':
+            case 'G':
+                mleft.forward();
+                mrigh.forward();
+                while ( true ) {
+                    auto dist = ultrasonic.distance();
+                    Serial.println( dist );
+                    if ( dist == ultrasonic.err )
+                        continue;
+                    if ( dist < 50 ) {
+                        mleft.stop();
+                        mrigh.stop();
+                        break;
+                    }
+                }
+                break;
         }
     }
 }

@@ -8,6 +8,11 @@ namespace axx {
 template< uint8_t pin1, uint8_t pin2 >
 struct Motor
 {
+    Motor() {
+        pinMode( pin1, OUTPUT );
+        pinMode( pin2, OUTPUT );
+    }
+
     void forward( uint8_t speed = 255 )
     {
         digitalWrite( pin2, LOW );
@@ -83,17 +88,19 @@ struct Ultrasonic {
     static constexpr unsigned long err = -1;
 };
 
+using EyeServo = Servo< 8, -1 >;
+using EyeUltrasonic = Ultrasonic< 12, 13 >;
+using LeftMotor = Motor< 2, 3 >;
+using RightMotor = Motor< 4, 5 >;
+
 void main() {
-    Servo< 8, -1 > servo;
+    EyeServo servo;
     Serial.begin( 9600 );
 
-    Motor< 2, 3 > mleft;
-    Motor< 4, 5 > mrigh;
+    LeftMotor mleft;
+    RightMotor mrigh;
 
-    Ultrasonic< 12, 13 > ultrasonic;
-
-    for ( uint8_t i = 2; i < 6; ++i )
-        pinMode( i, OUTPUT );
+    EyeUltrasonic ultrasonic;
 
     Serial.println( "Hello world!" );
 

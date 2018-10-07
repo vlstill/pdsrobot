@@ -1,9 +1,9 @@
-#include <Arduino.h>
 #include <Servo.h>
 #include <stdint.h>
 #include <assert.h>
+#include "axx.hpp"
 
-namespace pds {
+namespace axx {
 
 template< uint8_t pin1, uint8_t pin2 >
 struct Motor
@@ -83,16 +83,14 @@ struct Ultrasonic {
     static constexpr unsigned long err = -1;
 };
 
-}
-
-void setup() {
-    pds::Servo< 8, -1 > servo;
+void main() {
+    Servo< 8, -1 > servo;
     Serial.begin( 9600 );
 
-    pds::Motor< 2, 3 > mleft;
-    pds::Motor< 4, 5 > mrigh;
+    Motor< 2, 3 > mleft;
+    Motor< 4, 5 > mrigh;
 
-    pds::Ultrasonic< 12, 13 > ultrasonic;
+    Ultrasonic< 12, 13 > ultrasonic;
 
     for ( uint8_t i = 2; i < 6; ++i )
         pinMode( i, OUTPUT );
@@ -169,4 +167,4 @@ void setup() {
     }
 }
 
-void loop() { }
+}

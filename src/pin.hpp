@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 namespace axx {
     namespace raw {
 

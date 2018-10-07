@@ -40,6 +40,12 @@ install:
 script:
     - make build
 
+notifications:
+  email:
+    recipients:
+      - xstill@fi.muni.cz
+    on_success: change # default: change
+    on_failure: always # default: always
 
 #
 # Template #2: The project is intended to by used as a library with examples

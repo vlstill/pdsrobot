@@ -1,8 +1,10 @@
 #include <Servo.h>
 #include <stdint.h>
 #include <assert.h>
-#include <Arduino.h>
 #include "axx.hpp"
+#include "pin.hpp"
+#include "timing.hpp"
+#include "serial.hpp"
 
 namespace axx {
 
@@ -10,33 +12,33 @@ template< uint8_t pin1, uint8_t pin2 >
 struct Motor
 {
     Motor() {
-        pinMode( pin1, OUTPUT );
-        pinMode( pin2, OUTPUT );
+        raw::setOutput( pin1 );
+        raw::setOutput( pin2 );
     }
 
     void forward( uint8_t speed = 255 )
     {
-        digitalWrite( pin2, LOW );
+        raw::digital::write( pin2, false );
         setSpeed( pin1, speed );
     }
 
     void backward( uint8_t speed = 255 )
     {
-        digitalWrite( pin1, LOW );
+        raw::digital::write( pin1, false );
         setSpeed( pin2, speed );
     }
 
     void stop() {
-        setSpeed( pin1, LOW );
-        setSpeed( pin2, LOW );
+        raw::digital::write( pin1, false );
+        raw::digital::write( pin2, false );
     }
 
     void setSpeed( uint8_t pin, uint8_t speed )
     {
         if ( speed == 255 ) {
-            digitalWrite( pin, HIGH );
+            raw::digital::write( pin, true );
         } else {
-            analogWrite( pin, speed );
+            raw::analog::write( pin, speed );
         }
     }
 };
@@ -62,19 +64,19 @@ struct Servo
 template< uint8_t trigPin, uint8_t echoPin >
 struct Ultrasonic {
     Ultrasonic() {
-        pinMode( trigPin, OUTPUT );
-        pinMode( echoPin, INPUT );
+        raw::setOutput( trigPin );
+        raw::setInput( echoPin );
     }
 
     // in millimeters
     unsigned long distance() {
         // (high level time * sound velocity = 340m/s) / 2
-        digitalWrite( trigPin, HIGH );
-        delayMicroseconds( 10 );
-        digitalWrite( trigPin, LOW );
+        raw::digital::write( trigPin, true );
+        delay( 10_us );
+        raw::digital::write( trigPin, false );
         // pulse is in microseconds
         constexpr unsigned long max = 4000;
-        auto dist = pulseToMM( pulseIn( echoPin, HIGH, mmToPulse( max ) ) );
+        auto dist = pulseToMM( raw::pulseIn( echoPin, true, mmToPulse( max ) ) );
         return dist == 0 ? -1 : dist;
     }
 
@@ -96,17 +98,17 @@ using RightMotor = Motor< 4, 5 >;
 
 void main() {
     EyeServo servo;
-    Serial.begin( 9600 );
 
     LeftMotor mleft;
     RightMotor mrigh;
 
     EyeUltrasonic ultrasonic;
 
-    Serial.println( "Hello world!" );
+    serial << "Hello world!\n";
 
     while ( true ) {
-        char c = Serial.read();
+        char c;
+        serial >> c;
         switch ( c ) {
             case 'w': // forward
             case 'W':
@@ -150,9 +152,9 @@ void main() {
                 {
                 auto dist = ultrasonic.distance();
                 if ( dist == ultrasonic.err )
-                    Serial.println( "(error)" );
+                    serial << "(error)\n";
                 else
-                    Serial.println( dist );
+                    serial << dist << "\n";
                 break;
                 }
             case 'g':
@@ -161,7 +163,7 @@ void main() {
                 mrigh.forward();
                 while ( true ) {
                     auto dist = ultrasonic.distance();
-                    Serial.println( dist );
+                    serial << dist << "\n";
                     if ( dist == ultrasonic.err )
                         continue;
                     if ( dist < 50 ) {

@@ -1,6 +1,7 @@
 #include <Servo.h>
 #include <stdint.h>
 #include <assert.h>
+#include <Arduino.h>
 #include "axx.hpp"
 
 namespace axx {

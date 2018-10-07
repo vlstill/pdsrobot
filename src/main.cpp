@@ -64,7 +64,7 @@ struct Ultrasonic {
     unsigned long distance() {
         // (high level time * sound velocity = 340m/s) / 2
         digitalWrite( trigPin, HIGH );
-        delay( 1 );
+        delayMicroseconds( 10 );
         digitalWrite( trigPin, LOW );
         // pulse is in microseconds
         constexpr unsigned long max = 4000;

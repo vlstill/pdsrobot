@@ -11,7 +11,7 @@ namespace axx {
 
 using EyeServo = Servo< 8, -1 >;
 using EyeUltrasonic = Ultrasonic< 12, 13 >;
-using LeftMotor = Motor< 2, 3 >;
+using LeftMotor = Motor< 7, 6 >;
 using RightMotor = Motor< 4, 5 >;
 
 void main() {
@@ -24,29 +24,32 @@ void main() {
 
     serial << "Hello world!\n";
 
+    uint8_t speed = 255;
+
     while ( true ) {
         char c;
         serial >> c;
+        serial << c << "\n";
         switch ( c ) {
             case 'w': // forward
             case 'W':
-                mleft.forward();
-                mrigh.forward();
+                mleft.forward( speed );
+                mrigh.forward( speed );
                 break;
             case 'a': // left
             case 'A':
-                mleft.backward();
-                mrigh.forward();
+                mleft.backward( speed );
+                mrigh.forward( speed );
                 break;
             case 's': // back
             case 'S':
-                mleft.backward();
-                mrigh.backward();
+                mleft.backward( speed );
+                mrigh.backward( speed );
                 break;
             case 'd': // right
             case 'D':
-                mleft.forward();
-                mrigh.backward();
+                mleft.forward( speed );
+                mrigh.backward( speed );
                 break;
             case 'q':
             case 'Q':
@@ -75,6 +78,20 @@ void main() {
                     serial << dist << "\n";
                 break;
                 }
+            case 'o':
+            case 'O':
+                --speed;
+                serial << "speed: " << int(speed) << "\n";
+                mleft.forward( speed );
+                mrigh.forward( speed );
+                break;
+            case 'p':
+            case 'P':
+                ++speed;
+                serial << "speed: " << int(speed) << "\n";
+                mleft.forward( speed );
+                mrigh.forward( speed );
+                break;
             case 'g':
             case 'G':
                 mleft.forward();

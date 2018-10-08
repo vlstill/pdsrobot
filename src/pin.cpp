@@ -20,7 +20,7 @@ namespace axx {
         PIN_MAP( portreg, Ddr, DDRB, DDRC, DDRD )
         PIN_MAP( portreg, Port, PORTB, PORTC, PORTD )
         PIN_MAP( portreg, Pin, PINB, PINC, PIND )
-        PIN_MAP( uint8_t, Bit, pin, pin - 8, pin - 14 )
+        PIN_MAP( uint8_t, Bit, pin - 8, pin - 14, pin )
 #undef PIN_MAP
 
         void setInput( uint8_t pin ) {

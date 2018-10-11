@@ -9,7 +9,7 @@
 
 namespace axx {
 
-using EyeServo = Servo< 8, -1 >;
+using EyeServo = Servo< -1 >;
 using EyeUltrasonic = Ultrasonic< 12, 13 >;
 using LeftMotor = Motor< 7, 6 >;
 using RightMotor = Motor< 4, 5 >;
@@ -58,6 +58,10 @@ void main() {
             case 'e':
             case 'E':
                 servo.set( 90 );
+                break;
+            case 'r':
+            case 'R':
+                servo.set( -45 );
                 break;
             case 'z':
             case 'Z':

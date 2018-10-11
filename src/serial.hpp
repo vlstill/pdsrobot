@@ -9,10 +9,12 @@ struct Serial {
     Serial &operator<<( short v );
     Serial &operator<<( int v );
     Serial &operator<<( long v );
+    Serial &operator<<( long long v );
 
     Serial &operator<<( unsigned short v );
     Serial &operator<<( unsigned v );
     Serial &operator<<( unsigned long v );
+    Serial &operator<<( unsigned long long v );
 
     Serial &operator>>( char &v );
 };

@@ -2,6 +2,7 @@
 
 #include "pin.hpp"
 #include "timing.hpp"
+#include "distance.hpp"
 #include "serial.hpp"
 #include "servo.hpp"
 #include <stdint.h>
@@ -36,8 +37,7 @@ struct Ultrasonic {
         ~WithInterrupt() { TIMSK1 = 0; }
     };
 
-    // in millimeters
-    uint32_t distance() {
+    millimeters distance() {
         setTrigEdge( true );
 
         {
@@ -59,15 +59,14 @@ struct Ultrasonic {
         return nanoseconds{ Servo<>::period.count() * cnt + val * Servo<>::tick.count() };
     }
 
-    static constexpr uint32_t pulseToMM( nanoseconds pulse ) {
-        return (pulse.count() * 340) / 2 / 1000ll / 1000ll;
+    static constexpr millimeters pulseToMM( nanoseconds pulse ) {
+        return millimeters{ (pulse.count() * 340) / 2 / 1000ll / 1000ll };
     }
 
     volatile uint8_t cnt, cnt_up, cnt_down;
     volatile uint16_t val_up = 0, val_down = 0;
     volatile bool done = false;
     volatile bool up = false;
-    static constexpr uint32_t err = -1;
 };
 
 extern Ultrasonic ultrasonic;

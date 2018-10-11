@@ -73,10 +73,7 @@ void main() {
             case 'M':
                 {
                 auto dist = ultrasonic.distance();
-                if ( dist == ultrasonic.err )
-                    serial << "(error)\n";
-                else
-                    serial << dist << "\n";
+                serial << dist << "\n";
                 break;
                 }
             case 'o':
@@ -100,9 +97,7 @@ void main() {
                 while ( true ) {
                     auto dist = ultrasonic.distance();
                     serial << dist << "\n";
-                    if ( dist == ultrasonic.err )
-                        continue;
-                    if ( dist < 50 ) {
+                    if ( dist < 50_mm ) {
                         mleft.stop();
                         mrigh.stop();
                         break;

@@ -10,7 +10,6 @@
 namespace axx {
 
 using EyeServo = Servo< -1 >;
-using EyeUltrasonic = Ultrasonic< 12, 13 >;
 using LeftMotor = Motor< 7, 6 >;
 using RightMotor = Motor< 4, 5 >;
 
@@ -19,8 +18,6 @@ void main() {
 
     LeftMotor mleft;
     RightMotor mrigh;
-
-    EyeUltrasonic ultrasonic;
 
     serial << "Hello world!\n";
 

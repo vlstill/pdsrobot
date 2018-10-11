@@ -56,11 +56,11 @@ struct Ultrasonic {
     }
 
     static constexpr nanoseconds pulseTime( uint8_t cnt, uint16_t val ) {
-        return nanoseconds{ Servo<>::period.count() * cnt + val * Servo<>::tick.count() };
+        return Servo<>::period * cnt + val * Servo<>::tick;
     }
 
     static constexpr millimeters pulseToMM( nanoseconds pulse ) {
-        return millimeters{ (pulse.count() * 340) / 2 / 1000ll / 1000ll };
+        return scale_cast< millimeters >( (pulse * 340) / 2 );
     }
 
     volatile uint8_t cnt, cnt_up, cnt_down;

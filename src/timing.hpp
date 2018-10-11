@@ -5,12 +5,9 @@
 namespace axx {
 
 template< typename Repr, typename Period = axx::ratio< 1 > >
-struct duration : detail::Scaled< duration< Repr, Period >, Repr >
+struct duration : Scaled< Repr, Period >
 {
-    using rep = Repr;
-    using period = Period;
-    using Base = detail::Scaled< duration< Repr, Period >, rep >;
-
+    using Base = Scaled< Repr, Period >;
     using Base::Scaled;
 
     constexpr Repr count() { return Base::_val; }
@@ -18,8 +15,7 @@ struct duration : detail::Scaled< duration< Repr, Period >, Repr >
 
 template< typename DurationTo, typename ReprFrom, typename PeriodFrom >
 constexpr DurationTo duration_cast( const duration< ReprFrom, PeriodFrom > &d ) {
-    using Conv = typename Div< PeriodFrom, typename DurationTo::period >::type;
-    return DurationTo{ d.count() * Conv::num() / Conv::den() };
+    return scale_cast( d );
 }
 
 using seconds = duration< long long >;

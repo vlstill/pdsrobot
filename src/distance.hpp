@@ -5,21 +5,23 @@
 namespace axx {
 
 template< typename Repr, typename Period = axx::ratio< 1 > >
-struct distance : detail::Scaled< duration< Repr, Period >, Repr >
+struct distance : Scaled< Repr, Period >
 {
-    using rep = Repr;
-    using period = Period;
-    using Base = detail::Scaled< duration< Repr, Period >, rep >;
-
+    using Base = Scaled< Repr, Period >;
     using Base::Scaled;
-
-    constexpr Repr count() { return Base::_val; }
 };
 
 using meters = distance< long long >;
+using centimeters = distance< long long, ratio< 1, 100 > >;
 using millimeters = distance< long long, ratio< 1, 1000 > >;
 
 SCALED_OPS(meters, m)
+SCALED_OPS(centimeters, cm)
 SCALED_OPS(millimeters, mm)
+
+template< typename DistanceTo, typename ReprFrom, typename PeriodFrom >
+constexpr DistanceTo distance_cast( const distance< ReprFrom, PeriodFrom > &d ) {
+    return scale_cast( d );
+}
 
 }

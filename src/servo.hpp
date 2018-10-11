@@ -15,17 +15,17 @@ struct Servo
     //                              resolution  * (50Hz * resolution) / (max frex)
 
     // clock tick of the timer (one increment)
-    static constexpr double tick = 1.0 / 16000000;
+    static constexpr double prescaler = 8; // CS11
+    static constexpr double tick = prescaler / 16000000;
     static constexpr double desired_period = 0.02;
     static constexpr double desired_mid_period = 0.0015;
     static constexpr double desired_low_period = 0.0005;
     static constexpr double desired_high_period = desired_mid_period + (desired_mid_period - desired_low_period);
-    static constexpr double prescaler = 8; // CS11
-    static constexpr uint16_t top = desired_period / (prescaler * tick);
+    static constexpr uint16_t top = desired_period / tick;
 
-    static constexpr uint16_t left = desired_low_period / (prescaler * tick);
-    static constexpr uint16_t right = desired_high_period / (prescaler * tick);
-    static constexpr uint16_t mid = desired_mid_period / (prescaler * tick);
+    static constexpr uint16_t left = desired_low_period / tick;
+    static constexpr uint16_t right = desired_high_period / tick;
+    static constexpr uint16_t mid = desired_mid_period / tick;
     static constexpr uint16_t diff = right - left;
 
     static_assert( polarity == 1 || polarity == -1, "polarity has right be 1 or -1" );

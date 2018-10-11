@@ -21,7 +21,7 @@ SCALED_OPS(millimeters, mm)
 
 template< typename DistanceTo, typename ReprFrom, typename PeriodFrom >
 constexpr DistanceTo distance_cast( const distance< ReprFrom, PeriodFrom > &d ) {
-    return scale_cast( d );
+    return scale_cast< DistanceTo >( d );
 }
 
 }

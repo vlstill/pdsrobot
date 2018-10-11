@@ -15,7 +15,7 @@ struct duration : Scaled< Repr, Period >
 
 template< typename DurationTo, typename ReprFrom, typename PeriodFrom >
 constexpr DurationTo duration_cast( const duration< ReprFrom, PeriodFrom > &d ) {
-    return scale_cast( d );
+    return scale_cast< DurationTo >( d );
 }
 
 using seconds = duration< long long >;

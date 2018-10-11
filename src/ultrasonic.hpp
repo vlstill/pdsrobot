@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 
 namespace axx {
 
@@ -45,7 +44,7 @@ struct Ultrasonic {
             cnt = 0;
             done = up = false;
             raw::digital::write( trigPin, true );
-            _delay_us( 10 );
+            delay( 10_ms );
             raw::digital::write( trigPin, false );
             while ( !done ) { }
         }

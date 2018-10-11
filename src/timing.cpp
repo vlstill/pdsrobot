@@ -1,18 +1,18 @@
-#include <Arduino.h>
 #include "timing.hpp"
+#include <util/delay.h>
 
 namespace axx {
 
 void delay( seconds s ) {
-    ::delay( s.count() * 1000 );
+    _delay_ms( duration_cast< milliseconds >( s ).count() );
 }
 
 void delay( milliseconds ms ) {
-    ::delay( ms.count() );
+    _delay_ms( ms.count() );
 }
 
 void delay( microseconds us ) {
-    ::delayMicroseconds( us.count() );
+    _delay_us( us.count() );
 }
 
 }

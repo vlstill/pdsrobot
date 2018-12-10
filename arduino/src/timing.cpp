@@ -1,4 +1,5 @@
 #include "timing.hpp"
+#define __HAS_DELAY_CYCLES 0
 #include <util/delay.h>
 
 namespace axx {

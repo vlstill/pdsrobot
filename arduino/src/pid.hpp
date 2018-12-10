@@ -4,9 +4,10 @@ namespace axx {
 
 // http://www.mstarlabs.com/apeng/techniques/pidsoftw.html
 // modified to work with integers instead of floating point numbers
-template< long Gain, long IntTime, long DiffTime, long DeltaT,
-          long Setpoint = 0, // the value to maintain
-          long PrecBin = 8
+template< typename T,
+          T Gain, T IntTime, T DiffTime, T DeltaT,
+          T Setpoint = 0, // the value to maintain
+          T PrecBin = 8
         >
 struct PID
 {
@@ -14,9 +15,9 @@ struct PID
     PID() : integral( 0 ), derivative( Setpoint * DIVISOR )
     { }
 
-    long operator()( long in ) { return update( in ); }
+    T operator()( T in ) { return update( in ); }
 
-    long update( long in )
+    T update( T in )
     {
         auto err = in - Setpoint;
         auto out = err * DIVISOR;
@@ -31,10 +32,10 @@ struct PID
     }
 
   private:
-    static constexpr long DIVISOR = 1 << PrecBin;
+    static constexpr T DIVISOR = 1 << PrecBin;
 
-    long integral;
-    long derivative;
+    T integral;
+    T derivative;
 };
 
 }

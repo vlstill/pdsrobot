@@ -2,8 +2,8 @@
 #include <Arduino.h>
 
 void setup() {
-    Serial.begin( 9600 );
-    Serial.println( "A++ INFO: init" );
+    Serial.begin( 115200 );
+//    Serial.println( "A++ INFO: init" );
     axx::main();
 }
 

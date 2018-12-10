@@ -6,6 +6,8 @@
 #include "motor.hpp"
 #include "ultrasonic.hpp"
 #include "servo.hpp"
+#include "pid.hpp"
+#include "ir.hpp"
 
 namespace axx {
 
@@ -13,15 +15,25 @@ using EyeServo = Servo< -1 >;
 using LeftMotor = Motor< 7, 6 >;
 using RightMotor = Motor< 4, 5 >;
 
+// input capture -- měření délky pulsu
+// základ časovače: 16 MHz
+// budeme používat fast PWM
+
 void main() {
     EyeServo servo;
 
     LeftMotor mleft;
     RightMotor mrigh;
 
+    Ir< 3 > ir;
+    ir.test();
+
     serial << "Hello world!\n";
 
     uint8_t speed = 255;
+
+    mleft.stop();
+    mrigh.stop();
 
     while ( true ) {
         char c;
@@ -92,15 +104,40 @@ void main() {
                 break;
             case 'g':
             case 'G':
+
                 mleft.forward();
                 mrigh.forward();
                 while ( true ) {
-                    auto dist = ultrasonic.distance();
-                    serial << dist << "\n";
-                    if ( dist < 50_mm ) {
-                        mleft.stop();
-                        mrigh.stop();
-                        break;
+                    servo.set( -30 );
+                    delay( 200_ms );
+                    auto dist_l = ultrasonic.distance();
+
+                    servo.set( 0 );
+                    delay( 200_ms );
+                    auto dist_0 = ultrasonic.distance();
+
+                    servo.set( 30 );
+                    delay( 200_ms );
+                    auto dist_r = ultrasonic.distance();
+
+                    serial << dist_l << ' ' << dist_0 << ' ' << dist_r << '\n';
+
+                    if ( dist_0 < 50_mm ) {
+                        mleft.backward();
+                        mrigh.backward();
+                        serial << "0\n";
+                    } else if ( dist_l < 500_mm ) {
+                        mleft.forward();
+                        mrigh.backward();
+                        serial << "l\n";
+                    } else if ( dist_r < 500_mm ) {
+                        mleft.backward();
+                        mrigh.forward();
+                        serial << "r\n";
+                    } else {
+                        mleft.forward();
+                        mrigh.forward();
+                        serial << "f\n";
                     }
                 }
                 break;

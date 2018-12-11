@@ -4,7 +4,7 @@
 #include "sdkconfig.h"
 #include <chrono>
 #include <thread>
-#include "pwm.hpp"
+#include "motor.hpp"
 
 // motor1: 23, 22
 
@@ -12,15 +12,13 @@ using namespace std::literals;
 
 extern "C" void app_main()
 {
-	PWM< 23_pin, 0_timer, 0_channel, 16_tbits > pwm23( 100_Hz );
-	PWM< 19_pin, 1_timer, 1_channel, 16_tbits > pwm19( 100_Hz );
-	int perc = 0;
+	Motor< 23_pin, 22_pin, 0_channel > m1;
+	Motor< 19_pin, 21_pin, 1_channel > m2;
+	uint8_t speed = 0;
     while( 1 ) {
-		perc += 10;
-		if ( perc > 100 )
-			perc = 0;
-		pwm23.set_duty_perc( perc );
-		pwm19.set_duty_perc( perc );
+		speed += 16;
+		m1.forward( speed );
+		m2.forward( speed );
 		std::this_thread::sleep_for( 1s );
     }
 }

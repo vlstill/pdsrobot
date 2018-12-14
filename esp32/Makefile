@@ -8,7 +8,7 @@ build : $(SRCS)
 run : build
 	idf flash
 
-monitor :
+monitor : run
 	idf monitor
 
 .PHONY: all build run clean

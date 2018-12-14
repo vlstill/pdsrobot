@@ -42,49 +42,48 @@ void motor_set( OutPin< N > &base, mcpwm_unit_t mcpwm_num, mcpwm_timer_t timer_n
     mcpwm_set_duty( mcpwm_num, timer_num, op_num, speed ) || Die( "Motor PWM set failed" );
 }
 
-struct CaptureVal {
+struct UltrasonicDist {
     std::atomic< uint32_t > start{ 0 };
-    std::atomic< uint32_t > end{ 0 };
-    std::atomic< bool > done{ false };
+    std::atomic< uint32_t > distance{ 0 };
+    std::atomic< uint32_t > cnt{ 0 };
 };
 
-void IRAM_ATTR capture_handler( void *arg ) {
-    CaptureVal &val = *reinterpret_cast< CaptureVal * >( arg );
+rmt_item32_t ultrasonic_trig_signal;
+
+void ultrasonic_trig() {
+	rmt_write_items( ULTRASONIC_TRIG_CHANNEL, &ultrasonic_trig_signal, 1, false /* do not wait */ );
+}
+
+void capture_handler( void *arg ) {
+    auto &dist = *reinterpret_cast< UltrasonicDist * >( arg );
     auto status = MCPWM0.int_st.val;
+
     if ( status & CAP0_INT_EN ) {
         auto edge = mcpwm_capture_signal_get_edge( MCPWM_UNIT_0, MCPWM_SELECT_CAP0 );
-        if ( edge != 1 ) { // down
-            MCPWM0.int_ena.val &= ~CAP0_INT_EN;
-            val.end = mcpwm_capture_signal_get_value( MCPWM_UNIT_0, MCPWM_SELECT_CAP0 );
-            val.done = true;
-        } else {
-            val.start = mcpwm_capture_signal_get_value( MCPWM_UNIT_0, MCPWM_SELECT_CAP0 );
+        if ( edge == 1 ) { // up edge
+            dist.start = mcpwm_capture_signal_get_value( MCPWM_UNIT_0, MCPWM_SELECT_CAP0 );
             mcpwm_capture_enable( MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_NEG_EDGE, 0 );
+        }
+        else { // down edge
+            auto end = mcpwm_capture_signal_get_value( MCPWM_UNIT_0, MCPWM_SELECT_CAP0 );
+            dist.distance = end - dist.start;
+            dist.cnt++;
+            mcpwm_capture_enable( MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_POS_EDGE, 0 );
+            ultrasonic_trig();
         }
     }
     MCPWM0.int_clr.val = status; // handled
 }
 
-rmt_item32_t ultrasonic_trig_signal;
-
-int measure_distance()
-{
-    mcpwm_capture_enable( MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_POS_EDGE, 0 );
+void ultrasonic_measure_continuosly( UltrasonicDist &dist ) {
     MCPWM0.int_ena.val = CAP0_INT_EN;
-    CaptureVal capture;
-    mcpwm_isr_register( MCPWM_UNIT_0, capture_handler, &capture, 0 /* ESP_INTR_FLAG_IRAM */, nullptr );
-
-	rmt_write_items( ULTRASONIC_TRIG_CHANNEL, &ultrasonic_trig_signal, 1, false /* do not wait */ )
-	    || Die( "Ultrasonic: trigger failed" );
-
-    while ( !capture.done ) {
-        std::this_thread::yield();
-    }
-    return capture.end - capture.start;
+    mcpwm_isr_register( MCPWM_UNIT_0, capture_handler, &dist, 0 /* ESP_INTR_FLAG_IRAM */, nullptr );
+    mcpwm_capture_enable( MCPWM_UNIT_0, MCPWM_SELECT_CAP0, MCPWM_POS_EDGE, 0 );
+    ultrasonic_trig();
 }
 
 void ultrasonic_init_trig() {
-    ultrasonic_trig_signal.duration0 = 1 + 20us / BASE_TICK;
+    ultrasonic_trig_signal.duration0 = 1 + 100us / BASE_TICK;
     ultrasonic_trig_signal.level0 = 1;
     ultrasonic_trig_signal.duration1 = 1;
     ultrasonic_trig_signal.level1 = 0;
@@ -130,6 +129,12 @@ extern "C" void app_main()
     };
 
     ultrasonic_init_trig();
+    UltrasonicDist dist;
+    ultrasonic_measure_continuosly( dist );
+    std::cout << "before loop\n" << std::flush;
 
-    std::cout << "distance = " << measure_distance() << std::endl << std::flush;
+    while ( true ) {
+        std::cout << "distance = " << dist.distance << " (" << dist.cnt << ')' << std::endl << std::flush;
+        std::this_thread::sleep_for( 1s );
+    }
 }

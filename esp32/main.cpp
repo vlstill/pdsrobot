@@ -159,9 +159,13 @@ spi_device_handle_t init_line() {
     return dev;
 }
 
-std::array< bool, 8 > read_line( spi_device_handle_t dev )
+struct LineData {
+    uint8_t raw{};
+};
+
+LineData read_line( spi_device_handle_t dev )
 {
-    std::array< bool, 8 > values;
+    LineData values;
     for ( int i = 0; i < 8; ++i ) {
         spi_transaction_t trans{};
         trans.tx_data[ 0 ] = 0b00000001;
@@ -172,7 +176,7 @@ std::array< bool, 8 > read_line( spi_device_handle_t dev )
 
         spi_device_transmit( dev, &trans );
 
-        values[i] = ((trans.rx_data[1] & 0b11) << 8 | trans.rx_data[2]) > 512;
+        values.raw |= (((trans.rx_data[1] & 0b11) << 8 | trans.rx_data[2]) > 512) << i;
     }
     return values;
 }
@@ -209,27 +213,17 @@ spi_device_handle_t init_led_feeder() {
     return dev;
 }
 
-void set_leds( spi_device_handle_t dev, uint8_t data ) {
+void set_leds( spi_device_handle_t dev, LineData data ) {
     spi_transaction_t trans{};
     trans.length = 8;
     trans.rxlength = 0;
-    trans.tx_data[ 0 ] = data;
+    trans.tx_data[ 0 ] = data.raw;
     trans.flags = SPI_TRANS_USE_TXDATA;
     spi_device_transmit( dev, &trans );
 
     static OutPin< LED_FEEDER_SET > set;
     set.set( true );
     set.set( false );
-}
-
-void set_leds( spi_device_handle_t dev, std::array< bool, 8 > data ) {
-    uint8_t val = 0;
-    int i = 0;
-    for ( auto v : data ) {
-        val |= v << i;
-        ++i;
-    }
-    set_leds( dev, val );
 }
 
 extern "C" void app_main()
@@ -264,27 +258,36 @@ extern "C" void app_main()
     auto led_feeder = init_led_feeder();
 
     std::cout << "before loop\n" << std::flush;
+    using time = std::chrono::steady_clock;
+
     while ( true ) {
+        auto next = time::now() + 100ms;
+
         if ( dist.distance < 100 && dist.distance > 0 )
             break;
         auto vals = read_line( line_sensor );
         set_leds( led_feeder, vals );
+        /*
         std::copy( vals.begin(), vals.end(),
                    std::experimental::make_ostream_joiner( std::cout, ", " ) );
         std::cout << std::endl;
+        */
 
-        std::this_thread::sleep_for( 50ms );
+        std::this_thread::sleep_until( next );
     }
     std::cout << "start\n" << std::flush;
     motorr_set( 40 );
     motorl_set( 40 );
+
+
     while ( true ) {
+        auto next = time::now() + 100ms;
+
         auto vals = read_line( line_sensor );
         set_leds( led_feeder, vals );
-        std::copy( vals.begin(), vals.end(),
-                   std::experimental::make_ostream_joiner( std::cout, ", " ) );
-        std::cout << std::endl;
 
-        std::this_thread::sleep_for( 100ms );
+        std::cout << std::chrono::duration_cast< std::chrono::milliseconds >( next - time::now() ).count() << "ms\n" << std::flush;
+
+        std::this_thread::sleep_until( next );
     }
 }

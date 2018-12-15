@@ -188,7 +188,7 @@ struct LineData
         return std::inner_product( begin(), end(), WEIGHTS.begin(), 0 );
     }
 
-    static constexpr std::array< int, 8 > WEIGHTS = { -16, -14, -12, 4,   4, 12, 14, 16 };
+    static constexpr std::array< int, 8 > WEIGHTS = { -16, -14, -12, -4,   4, 12, 14, 16 };
     static constexpr int MAX = WEIGHTS[7];
     uint8_t raw{};
 };

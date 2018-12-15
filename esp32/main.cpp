@@ -13,6 +13,7 @@
 #include "ultrasonic.hpp"
 #include <atomic>
 #include <experimental/iterator>
+#include <numeric>
 
 static_assert( ATOMIC_INT_LOCK_FREE );
 
@@ -21,7 +22,7 @@ constexpr static std::chrono::nanoseconds BASE_TICK { 1000 * 1000 * 1000 / BASE_
 
 constexpr gpio_num_t MOTOR_PINS[2][2] = { { 23_pin, 22_pin }, { 19_pin, 21_pin } };
 constexpr auto MOTOR_MCPWM = MCPWM_UNIT_0;
-constexpr FreqHz MOTOR_MWM_FREQ = 50_Hz;
+constexpr FreqHz MOTOR_MWM_FREQ = 10_Hz;
 
 constexpr gpio_num_t ULTRASONIC_TRIG = 18_pin;
 constexpr static auto ULTRASONIC_TRIG_CHANNEL = RMT_CHANNEL_0;
@@ -159,7 +160,36 @@ spi_device_handle_t init_line() {
     return dev;
 }
 
-struct LineData {
+struct LineData
+{
+    bool operator[]( int ix ) const {
+        return raw & (1 << ix);
+    }
+
+    struct const_iterator
+    {
+        const_iterator( const LineData *self = nullptr, int ix = 8 ) : _self( self ), _ix( ix ) { }
+
+        bool operator*() const { return (*_self)[ _ix ]; }
+        const_iterator &operator++() { ++_ix; return *this; }
+
+        bool operator==( const_iterator &o ) const { return _ix == o._ix; }
+        bool operator!=( const_iterator &o ) const { return _ix != o._ix; }
+
+        const LineData *_self;
+        int _ix;
+    };
+    using iterator = const_iterator;
+
+    const_iterator begin() const { return const_iterator( this, 0 ); }
+    const_iterator end() const { return const_iterator( this, 8 ); }
+
+    int diretion() const {
+        return std::inner_product( begin(), end(), WEIGHTS.begin(), 0 );
+    }
+
+    static constexpr std::array< int, 8 > WEIGHTS = { -16, -14, -12, 0,   0, 12, 14, 16 };
+    static constexpr int MAX = WEIGHTS[7];
     uint8_t raw{};
 };
 
@@ -226,6 +256,74 @@ void set_leds( spi_device_handle_t dev, LineData data ) {
     set.set( false );
 }
 
+struct LineSamples
+{
+    int proportional() const { return samples[ idx ].second.diretion(); }
+
+    int derivative() const {
+        int prev = samples[ (idx - 1) % samples.size() ].second.diretion();
+        return (proportional() - prev) / 2;
+    }
+
+    int integrative() const {
+        int cnt = 0;
+        return std::accumulate( samples.begin(), samples.end(), 0,
+                      [&]( int accum, auto data ) {
+                          if ( data.first ) {
+                              ++cnt;
+                              return accum + data.second.diretion();
+                          }
+                          return accum;
+                      } )
+                  / cnt;
+    }
+
+    LineData any() const {
+        LineData out;
+        for ( auto x : samples )
+            out.raw |= x.second.raw;
+        return out;
+    }
+
+    std::pair< float, float > speeds() const {
+        constexpr float CORRECTION_MIN_SPEED = 30;
+        if ( samples[ idx ].second.raw == 0 )
+            return { 0, 0 };
+
+        constexpr int COEFF[3] = { 4, 2, 1 };
+        int sum = (COEFF[0] * proportional() + COEFF[1] * derivative() + COEFF[2] * integrative())
+                  / (COEFF[0] + COEFF[1] + COEFF[2]);
+        if ( sum == 0 )
+            return { 100, 100 };
+
+        // > 0 -> too much right -> correct to the left -> slow right
+        if ( sum > 0 )
+            sum = std::min( sum, LineData::MAX );
+        else
+            sum = std::max( sum, -LineData::MAX );
+        auto corr = (sum * ((100.0 - CORRECTION_MIN_SPEED) / LineData::MAX));
+        return { 100 + corr, 100 - corr };
+    }
+
+    void add( LineData data ) {
+        sample.raw |= data.raw;
+        ++sampled;
+        if ( sampled >= ADD_SAMPLES ) {
+            sample.raw = sampled = 0;
+            ++idx;
+            idx %= samples.size();
+            samples[ idx ].first = true;
+            samples[ idx ].second = data;
+        }
+    };
+
+    static constexpr int ADD_SAMPLES = 5;
+    LineData sample{};
+    int8_t sampled = 0;
+    std::array< std::pair< bool, LineData >, 16 > samples{};
+    unsigned idx = 0;
+};
+
 extern "C" void app_main()
 {
     mcpwm_gpio_init( MOTOR_MCPWM, MCPWM0A, MOTOR_PINS[0][0] );
@@ -257,37 +355,53 @@ extern "C" void app_main()
     auto line_sensor = init_line();
     auto led_feeder = init_led_feeder();
 
-    std::cout << "before loop\n" << std::flush;
     using time = std::chrono::steady_clock;
 
-    while ( true ) {
-        auto next = time::now() + 100ms;
+    LineSamples line_samples;
 
-        if ( dist.distance < 100 && dist.distance > 0 )
+  wait:
+    std::cout << "waiting\n" << std::flush;
+    bool near = false;
+    while ( true ) {
+        auto next = time::now() + 50ms;
+
+        if ( !near && dist.distance < 200 && dist.distance > 0 )
+            near = true;
+        if ( near && dist.distance > 200 )
             break;
         auto vals = read_line( line_sensor );
         set_leds( led_feeder, vals );
-        /*
-        std::copy( vals.begin(), vals.end(),
-                   std::experimental::make_ostream_joiner( std::cout, ", " ) );
-        std::cout << std::endl;
-        */
+        std::cout << " dist = " << dist.distance
+                  << std::endl;
 
         std::this_thread::sleep_until( next );
     }
     std::cout << "start\n" << std::flush;
-    motorr_set( 40 );
-    motorl_set( 40 );
 
-
+    auto next = time::now() + 10ms;
     while ( true ) {
-        auto next = time::now() + 100ms;
+        for ( int i = 0; i < LineSamples::ADD_SAMPLES; ++i ) {
+            std::this_thread::sleep_until( next );
+            next += 20ms;
 
-        auto vals = read_line( line_sensor );
-        set_leds( led_feeder, vals );
+            auto vals = read_line( line_sensor );
+            line_samples.add( vals );
+            set_leds( led_feeder, vals );
+        }
 
-        std::cout << std::chrono::duration_cast< std::chrono::milliseconds >( next - time::now() ).count() << "ms\n" << std::flush;
+        auto speeds = line_samples.speeds();
+        std::cout << "p = " << line_samples.proportional()
+                  << " i = " << line_samples.integrative()
+                  << " d = " << line_samples.derivative()
+                  << " L = " << speeds.first
+                  << " R = " << speeds.second
+                  << " dist = " << dist.distance
+                  << std::endl;
+        motorl_set( speeds.first * 0.2 );
+        motorr_set( speeds.second * 0.2 );
+        if ( line_samples.any().raw == 0 )
+            goto wait;
 
-        std::this_thread::sleep_until( next );
+//        std::cout << std::chrono::duration_cast< std::chrono::milliseconds >( next - time::now() ).count() << "ms\n" << std::flush;
     }
 }

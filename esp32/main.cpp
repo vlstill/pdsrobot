@@ -188,7 +188,7 @@ struct LineData
         return std::inner_product( begin(), end(), WEIGHTS.begin(), 0 );
     }
 
-    static constexpr std::array< int, 8 > WEIGHTS = { -16, -14, -12, 0,   0, 12, 14, 16 };
+    static constexpr std::array< int, 8 > WEIGHTS = { -16, -14, -12, 4,   4, 12, 14, 16 };
     static constexpr int MAX = WEIGHTS[7];
     uint8_t raw{};
 };
@@ -286,13 +286,13 @@ struct LineSamples
     }
 
     std::pair< float, float > speeds() const {
-        constexpr float CORRECTION_MIN_SPEED = 30;
+        constexpr float CORRECTION_MIN_SPEED = 20;
         if ( samples[ idx ].second.raw == 0 )
             return { 0, 0 };
 
-        constexpr int COEFF[3] = { 4, 2, 1 };
+        constexpr int COEFF[3] = { 8, 2, 2 };
         int sum = (COEFF[0] * proportional() + COEFF[1] * derivative() + COEFF[2] * integrative())
-                  / (COEFF[0] + COEFF[1] + COEFF[2]);
+                  / (abs( COEFF[0] ) + abs( COEFF[1] ) + abs( COEFF[2] ) );
         if ( sum == 0 )
             return { 100, 100 };
 
@@ -397,8 +397,8 @@ extern "C" void app_main()
                   << " R = " << speeds.second
                   << " dist = " << dist.distance
                   << std::endl;
-        motorl_set( speeds.first * 0.2 );
-        motorr_set( speeds.second * 0.2 );
+        motorl_set( speeds.first * 0.25 );
+        motorr_set( speeds.second * 0.25 );
         if ( line_samples.any().raw == 0 )
             goto wait;
 
